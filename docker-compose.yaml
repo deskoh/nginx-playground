@@ -1,0 +1,68 @@
+version: '3'
+
+services:
+  docker-nlb:
+    image: nginxinc/nginx-unprivileged:stable-alpine
+    container_name: docker-nlb
+    environment:
+      - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx=${RESOLVER}
+      - PROXY_URL=nginx-upstream
+      - PROXY_PORT=${PROXY_PORT:-8080}
+      - PROXY_PROTOCOL=
+      - PROXY_PROTOCOL_SEND=on
+    ports:
+      - "8443:8443"
+      - "8080:8080"
+    volumes:
+      - ./docker-entrypoint.d/40-write-certs.sh:/docker-entrypoint.d/40-configure.sh
+      - ./templates/ssl_config.inc:/etc/nginx/ssl_config.inc:ro
+      - ./templates/nginx-tcp.conf:/etc/nginx/templates/nginx.conf.template:ro
+      - ./templates/conf.d/default.conf:/etc/nginx/templates/conf.d/default.conf.template:ro
+
+  nginx-tcp:
+    image: nginxinc/nginx-unprivileged:stable-alpine
+    container_name: nginx-upstream
+    environment:
+      - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
+      - SERVER_CERT
+      - SERVER_KEY
+      - CLIENT_CA
+      - PROXY_URL
+      - PROXY_PORT
+      - PROXY_PROTOCOL=${PROXY_PROTOCOL}
+    # ports:
+    #   - "8443:8443"
+    #   - "8080:8080"
+    volumes:
+      - ./docker-entrypoint.d/40-configure.sh:/docker-entrypoint.d/40-configure.sh
+      - ./templates/ssl_config.inc:/etc/nginx/ssl_config.inc:ro
+      - ./templates/nginx-tcp.conf:/etc/nginx/templates/nginx.conf.template:ro
+      - ./templates/conf.d/default.conf:/etc/nginx/templates/conf.d/default.conf.template:ro
+
+  nginx-http:
+    image: nginxinc/nginx-unprivileged:stable-alpine
+    container_name: nginx-upstream
+    environment:
+      - NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
+      - SERVER_CERT
+      - SERVER_KEY
+      - CLIENT_CA
+      - PROXY_URL
+      - PROXY_PORT
+      - PROXY_PROTOCOL=${PROXY_PROTOCOL}
+      - KEEPALIVE_TIMEOUT=65
+    # ports:
+    #   - "8443:8443"
+    #   - "8080:8080"
+    volumes:
+      - ./docker-entrypoint.d/40-configure.sh:/docker-entrypoint.d/40-configure.sh
+      - ./templates/ssl_config.inc:/etc/nginx/ssl_config.inc:ro
+      - ./templates/nginx-http.conf:/etc/nginx/templates/nginx.conf.template:ro
+      - ./templates/conf.d/default.conf:/etc/nginx/templates/conf.d/default.conf.template:ro
+
+  # httpbin:
+  #   image: kennethreitz/httpbin:latest
+  #   restart: unless-stopped
+  #   environment:
+  #   expose:
+  #     - 80
